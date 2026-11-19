@@ -2,6 +2,8 @@
 
 *English · [Türkçe](README.md)*
 
+**[▶ Open the live simulation](https://aag.aydinozturk.com)**
+
 A closed-loop simulation of a carrier aircraft **arresting gear**, written to answer a
 software question rather than a physics one: **which real-time properties actually matter,
 and which ones don't?**
@@ -41,8 +43,8 @@ python3 run_scenarios.py     # ten named fault scenarios side by side
 python3 sweeps/sweep_timing.py   # the full timing/network/power sweep suite (~15 min)
 ```
 
-For the interactive bench, open [`ui/simulator.html`](ui/simulator.html) in a browser —
-single file, works offline, nothing to install.
+The interactive bench runs in the browser: **[aag.aydinozturk.com](https://aag.aydinozturk.com)**. For offline use, just download
+[`ui/simulator.html`](ui/simulator.html) — single file, nothing to install.
 
 ---
 

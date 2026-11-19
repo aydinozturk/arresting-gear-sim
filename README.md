@@ -2,6 +2,8 @@
 
 *Türkçe · [English](README.en.md)*
 
+**[▶ Canlı simülasyonu aç](https://aag.aydinozturk.com)**
+
 Bir uçak gemisi **yakalama sisteminin** (arresting gear) kapalı çevrim simülasyonu.
 Amaç bir fizik sorusunu değil, bir yazılım sorusunu yanıtlamak:
 **gerçek zamanlı davranışın hangi özellikleri gerçekten önemli, hangileri değil?**
@@ -42,8 +44,9 @@ python3 run_scenarios.py     # on adlandırılmış arıza senaryosu yan yana
 python3 sweeps/sweep_timing.py   # bütün zamanlama/ağ/güç taramaları (~15 dk)
 ```
 
-Etkileşimli tezgâh için [`ui/simulator.html`](ui/simulator.html) dosyasını tarayıcıda açın —
-tek dosya, çevrimdışı çalışır, kurulum gerektirmez.
+Etkileşimli tezgâh tarayıcıda çalışıyor: **[aag.aydinozturk.com](https://aag.aydinozturk.com)**. Çevrimdışı kullanmak için
+[`ui/simulator.html`](ui/simulator.html) dosyasını indirmeniz yeterli — tek dosya, kurulum
+gerektirmez.
 
 ---
 
