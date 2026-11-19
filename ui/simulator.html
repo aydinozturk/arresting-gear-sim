@@ -1,0 +1,1070 @@
+<title>Yakalama Sistemi Tezgâhı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Düzen: solda ayar paneli, sağda güverte görünümü + göstergeler + grafikler. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface-2:#e3e8ed; --line:#c6d0d9;
+  --fg:#162029; --fg-dim:#5c6b78; --fg-faint:#8696a3;
+  --accent:#b9770e; --accent-soft:#f3e2c3;
+  --twister:#0d7377; --motor:#6b46c1; --bus:#2563a8;
+  --ok:#1f7a4d; --warn:#9a6508; --bad:#b03a2e;
+  --deck:#9aa7b1; --deck-mark:#e8edf1;
+  --font-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1217; --surface:#151d24; --surface-2:#1c262f; --line:#2b3741;
+  --fg:#e2e9ef; --fg-dim:#93a4b2; --fg-faint:#6b7d8b;
+  --accent:#e8a33c; --accent-soft:#3a2d16;
+  --twister:#3ec1c6; --motor:#a98ae8; --bus:#5e9fe0;
+  --ok:#4db87c; --warn:#dca63c; --bad:#e8705f;
+  --deck:#39454f; --deck-mark:#55646f;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d1217; --surface:#151d24; --surface-2:#1c262f; --line:#2b3741;
+  --fg:#e2e9ef; --fg-dim:#93a4b2; --fg-faint:#6b7d8b;
+  --accent:#e8a33c; --accent-soft:#3a2d16;
+  --twister:#3ec1c6; --motor:#a98ae8; --bus:#5e9fe0;
+  --ok:#4db87c; --warn:#dca63c; --bad:#e8705f;
+  --deck:#39454f; --deck-mark:#55646f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);line-height:1.45}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px;max-width:1360px;margin:0 auto}
+h1{font-size:1.45rem;font-weight:600;letter-spacing:-.015em;margin:0;text-wrap:balance}
+h2{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-dim);margin:0 0 10px}
+p{margin:0}
+.sub{color:var(--fg-dim);font-size:.9rem;margin-top:6px;max-width:68ch}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.chip{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.04em;padding:4px 9px;border-radius:3px;border:1px solid var(--line);color:var(--fg-dim);background:var(--surface);white-space:nowrap}
+.chip.warnchip{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+.preset{font-family:var(--font-ui);font-size:.8rem;padding:6px 11px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;transition:border-color .12s,background .12s}
+.preset:hover{border-color:var(--accent)}
+.preset[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .preset[aria-pressed="true"],
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .preset[aria-pressed="true"]{color:#15202a}}
+.layout{display:grid;grid-template-columns:286px minmax(0,1fr);gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px}
+aside .group{margin-bottom:16px}
+aside .group:last-child{margin-bottom:0}
+.ctl{margin-bottom:11px}
+.ctl:last-child{margin-bottom:0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;color:var(--fg-dim);margin-bottom:3px}
+.ctl .val{font-family:var(--font-mono);font-size:.78rem;color:var(--fg);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+select{width:100%;font-family:var(--font-ui);font-size:.82rem;padding:5px 7px;border-radius:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+main{display:flex;flex-direction:column;gap:18px;min-width:0}
+canvas{display:block;width:100%}
+.deckwrap{position:relative}
+.playbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+button.pb{font-family:var(--font-ui);font-size:.8rem;padding:5px 12px;border-radius:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);cursor:pointer}
+button.pb:hover{border-color:var(--accent)}
+#scrub{flex:1 1 180px;min-width:120px;accent-color:var(--accent)}
+.tele{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tele div{background:var(--surface);padding:8px 10px;min-width:0}
+.tele .k{font-size:.66rem;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-faint)}
+.tele .v{font-family:var(--font-mono);font-size:1.02rem;font-variant-numeric:tabular-nums;margin-top:1px}
+.verdict{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.vbadge{font-family:var(--font-mono);font-weight:600;font-size:1rem;letter-spacing:.06em;padding:7px 16px;border-radius:4px}
+.vbadge.pass{background:var(--ok);color:#fff}
+.vbadge.fail{background:var(--bad);color:#fff}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:9px;flex:1 1 420px;min-width:0}
+.check{border-left:3px solid var(--line);padding-left:9px}
+.check.ok{border-left-color:var(--ok)}
+.check.no{border-left-color:var(--bad)}
+.check .cl{font-size:.7rem;color:var(--fg-dim)}
+.check .cv{font-family:var(--font-mono);font-size:.9rem;font-variant-numeric:tabular-nums}
+.check .cv .lim{color:var(--fg-faint);font-size:.78rem}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.72rem;color:var(--fg-dim);margin-top:7px}
+.legend i{display:inline-block;width:11px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.ebar{display:flex;height:22px;border-radius:4px;overflow:hidden;border:1px solid var(--line);margin-top:4px}
+.ebar span{display:block;font-family:var(--font-mono);font-size:.68rem;color:#fff;text-align:center;line-height:22px;white-space:nowrap;overflow:hidden}
+.note{font-size:.78rem;color:var(--fg-dim);margin-top:8px}
+.note b{color:var(--fg);font-weight:600}
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--fg-dim)}
+code{font-family:var(--font-mono);font-size:.92em;background:var(--surface-2);padding:1px 4px;border-radius:3px}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>Yakalama Sistemi Tezgâhı</h1>
+    <p class="sub">AAG benzeri bir uçak gemisi yakalama sisteminin kapalı çevrim simülasyonu. Kontrol döngüsü gerçek zamanlı kodun çalışacağı gibi koşuyor: ayrık görevler, yürütme gecikmesi, jitter, overrun, ağ kaybı. Ayarı değiştirin, arrest yeniden hesaplanır.</p>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+    <span class="chip warnchip">TÜM PARAMETRELER VARSAYIM</span>
+    <span class="chip" id="runtime">—</span>
+  </div>
+</header>
+
+<div class="presets" id="presets"></div>
+
+<div class="layout">
+  <aside class="panel">
+    <div class="group">
+      <h2>Uçak</h2>
+      <div class="ctl"><label for="mass">Kanca ağırlığı<span class="val" id="mass_v"></span></label><input type="range" id="mass" min="12000" max="24000" step="500"></div>
+      <div class="ctl"><label for="v0">Temas hızı<span class="val" id="v0_v"></span></label><input type="range" id="v0" min="52" max="76" step="1"></div>
+      <div class="ctl"><label for="werr">Ağırlık kestirim hatası<span class="val" id="werr_v"></span></label><input type="range" id="werr" min="-10000" max="10000" step="500"></div>
+    </div>
+    <div class="group">
+      <h2>Güverte ağı</h2>
+      <div class="ctl"><label for="lat">Gecikme<span class="val" id="lat_v"></span></label><input type="range" id="lat" min="0" max="200" step="1"></div>
+      <div class="ctl"><label for="jit">Jitter ±<span class="val" id="jit_v"></span></label><input type="range" id="jit" min="0" max="20" step="0.5"></div>
+      <div class="ctl"><label for="drop">Paket kaybı<span class="val" id="drop_v"></span></label><input type="range" id="drop" min="0" max="90" step="1"></div>
+      <div class="ctl"><label for="outage">Tam kopma süresi<span class="val" id="outage_v"></span></label><input type="range" id="outage" min="0" max="1500" step="25"></div>
+    </div>
+    <div class="group">
+      <h2>Gerçek zamanlı katman</h2>
+      <div class="ctl"><label for="wd">Watchdog eşiği<span class="val" id="wd_v"></span></label><input type="range" id="wd" min="5" max="200" step="5"></div>
+      <div class="ctl"><label for="fb">Bozulmuş mod</label><select id="fb"><option value="0">Motor torkunu sıfıra rampala</option><option value="1">Tambur enkoderinden kestirim</option></select></div>
+      <div class="ctl"><label for="pol">Overrun politikası</label><select id="pol"><option value="skip">Atla (skip)</option><option value="queue">Kuyruğa al (queue)</option></select></div>
+      <div class="ctl"><label for="iwcet">Akım çevrimi WCET<span class="val" id="iwcet_v"></span></label><input type="range" id="iwcet" min="10" max="800" step="5"></div>
+      <div class="ctl"><label for="iper">Akım çevrimi periyodu<span class="val" id="iper_v"></span></label><input type="range" id="iper" min="50" max="2500" step="50"></div>
+      <div class="ctl"><label for="oper">Dış çevrim periyodu<span class="val" id="oper_v"></span></label><input type="range" id="oper" min="0.5" max="32" step="0.5"></div>
+    </div>
+    <div class="group">
+      <h2>Arızalar</h2>
+      <div class="ctl"><label for="pcs">PCS kondansatör kaybı<span class="val" id="pcs_v"></span></label><input type="range" id="pcs" min="-1" max="30" step="1"></div>
+      <div class="ctl"><label for="rip">Tork dalgalanması<span class="val" id="rip_v"></span></label><input type="range" id="rip" min="0" max="60" step="1"></div>
+    </div>
+  </aside>
+
+  <main>
+    <section class="panel deckwrap">
+      <h2>Güverte — yukarıdan görünüm</h2>
+      <canvas id="deck" height="260"></canvas>
+      <div class="playbar">
+        <button class="pb" id="play">▶ Oynat</button>
+        <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Zaman">
+        <button class="pb" id="spd" title="Oynatma hızı">0.25×</button>
+      </div>
+    </section>
+
+    <section class="tele" id="tele"></section>
+
+    <section class="panel">
+      <h2>Kabul ölçütleri</h2>
+      <div class="verdict">
+        <span class="vbadge" id="verdict">—</span>
+        <div class="checks" id="checks"></div>
+      </div>
+      <p class="note" id="stopnote"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Gerçek zamanlı olaylar</h2>
+      <canvas id="strip" height="96"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--bad)"></i>bozulmuş mod</span>
+        <span><i style="background:var(--accent)"></i>watchdog tripi</span>
+        <span><i style="background:var(--fg-faint)"></i>kaybolan paket</span>
+        <span><i style="background:var(--motor)"></i>PCS arızası</span>
+      </div>
+      <p class="note" id="rtnote"></p>
+    </section>
+
+    <div class="charts">
+      <section class="panel">
+        <h2>Hız ve referans</h2>
+        <canvas id="c_v" height="190"></canvas>
+        <div class="legend"><span><i style="background:var(--accent)"></i>uçak hızı</span><span><i style="background:var(--fg-faint)"></i>referans v_ref</span></div>
+      </section>
+      <section class="panel">
+        <h2>Kanca yükü</h2>
+        <canvas id="c_h" height="190"></canvas>
+        <div class="legend"><span><i style="background:var(--accent)"></i>kanca yükü</span><span><i style="background:var(--bad)"></i>limit</span></div>
+      </section>
+      <section class="panel">
+        <h2>Mil torku paylaşımı</h2>
+        <canvas id="c_t" height="190"></canvas>
+        <div class="legend"><span><i style="background:var(--twister)"></i>su türbini</span><span><i style="background:var(--motor)"></i>endüksiyon motoru</span></div>
+      </section>
+      <section class="panel">
+        <h2>DC bara gerilimi</h2>
+        <canvas id="c_b" height="190"></canvas>
+        <div class="legend"><span><i style="background:var(--bus)"></i>bara</span><span><i style="background:var(--warn)"></i>fren çoperi eşiği</span></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Enerji paylaşımı</h2>
+      <div class="ebar" id="ebar"></div>
+      <p class="note" id="enote"></p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  Model saf Python olarak <code>aag/</code> altında, bu sayfadaki motor onun birebir JavaScript portu; dokuz durumda Python çıktısıyla karşılaştırıldı.
+  Kaynak materyalde su türbini enerji payının ≈%70 olduğu dışında sayısal parametre yok — buradaki değerler <b>varsayımdır</b> ve sonuçlar
+  AAG doğrulaması değil, duyarlılık analizidir. Gerçek zamanlı iş listesi: <code>docs/rt-work-items.md</code>.
+</footer>
+</div>
+
+<script>
+const AAG = (function(){
+// AAG-Clone fizik + kontrol + gercek zamanli katman — Python modelinin JS portu.
+// aag/plant.py, aag/control.py, aag/rt.py, aag/sim.py ile birebir ayni denklemler.
+// Dogrulama: ui/verify.js nominal kosuyu Python ciktisi ile karsilastirir.
+
+const NSTATE = 16;
+const IX = 0, IV = 1, ISD = 2, IW = 3, IZ = 4, II = 5, IVB = 6,
+      IEWT = 7, IEMOT = 8, IECH = 9, IERL = 10, IEDMP = 11,
+      IETHR = 12, IEROLL = 13, ITH = 14, IEFR = 15;
+
+const X_ENGAGE = 6.0, X_RAMP = 28.0, DSDX_FLOOR = 0.15, INTEG_CLAMP = 2.0;
+
+// --- varsayilan parametreler (aag/params.py ile ayni; HEPSI VARSAYIM) -------
+function defaults() {
+  return {
+    mass: 22000, entrySpeed: 65, thrust: 100e3, rollResist: 6e3,
+    halfSpan: 15.0,
+    kCable: 4.0e5, cCable: 1.0e4, kShock: 3.0e5, cShockRef: 6.0e4,
+    wRef: 18000, shockExp: 1.0, shockKExp: 1.0, shockScheduling: true,
+    drumRadius: 0.55, drumInertia: 300.0, drumFriction: 120.0,
+    kWt: 5.90, kWtModelErr: 0.0,
+    kt: 30.0, rPh: 0.004, lPh: 0.4e-3, iMax: 7500.0, tMax: 220e3,
+    rippleAmp: 0.0, rippleOrder: 6.0,
+    vNom: 6500, vMax: 7500, vChop: 7000, rChop: 0.05, cBank: 1.5,
+    // gercek zamanli
+    baseDt: 5.0e-5, innerBandwidth: 400.0,
+    watchdogTimeout: 0.020, watchdogHold: 0.050,
+    overrunPolicy: 'skip', fallbackEstimator: false,
+    deckRate: 1000.0, seed: 20261118,
+    taskSupervisor: { period: 1 / 100, exec: 120e-6, jitter: 20e-6, overrunProb: 0, overrunFactor: 3 },
+    taskTrajectory: { period: 1 / 500, exec: 80e-6, jitter: 15e-6, overrunProb: 0, overrunFactor: 3 },
+    taskOuter:      { period: 1 / 1000, exec: 150e-6, jitter: 30e-6, overrunProb: 0, overrunFactor: 3 },
+    taskInner:      { period: 1 / 10000, exec: 25e-6, jitter: 5e-6, overrunProb: 0, overrunFactor: 3 },
+    linkDeck: { latency: 1.0e-3, jitter: 0.2e-3, dropout: 0, burstProb: 0, burstExtra: 0 },
+    linkTorque: { latency: 0, jitter: 0, dropout: 0, burstProb: 0, burstExtra: 0 },
+    // arizalar
+    pcsLossTime: -1, pcsCAfter: 0.02, pcsDisableMotor: true,
+    netOutageStart: -1, netOutageDur: 0,
+    weightEstError: 0,
+    tMax_: 6.0,
+    // limitler
+    limPeakG: 4.5, limHook: 1.10e6, limRunout: 103.0, limRms: 3.0, limVbus: 7500,
+  };
+}
+
+// --- kazanc bin'leri --------------------------------------------------------
+const WEIGHT_EDGES = [14000, 18000, 22000];
+const SPEED_EDGES = [56, 64, 72];
+const RUNOUT_BY_SPEED = [66.0, 82.0, 97.0, 101.0];
+
+function binOf(mass, speed) {
+  let i = 0, j = 0;
+  for (const e of WEIGHT_EDGES) if (mass > e) i++;
+  for (const e of SPEED_EDGES) if (speed > e) j++;
+  return [i, j];
+}
+function gainsOf(mass, speed) {
+  const [i, j] = binOf(mass, speed);
+  return { kp: 6.0e3 + 4.0e3 * i + 1.5e3 * j,
+           ki: 9.0e3 + 6.0e3 * i + 2.0e3 * j,
+           runout: RUNOUT_BY_SPEED[j], bin: [i, j] };
+}
+
+// --- tohumlu rastgelelik (surecler arasi tekrar uretilebilir) ---------------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function strHash(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const rngFor = (seed, name) => mulberry32(strHash(seed + ':' + name));
+
+// --- geometri ---------------------------------------------------------------
+const payout = (x, b) => 2.0 * (Math.sqrt(x * x + b * b) - b);
+const dpayout = (x, b) => 2.0 * x / Math.sqrt(x * x + b * b);
+
+// --- gecikmeli ag baglantisi -------------------------------------------------
+class DelayLink {
+  constructor(spec, rng) {
+    this.spec = spec; this.rng = rng;
+    this.q = []; this.last = null; this.maxStale = 0; this.drops = 0; this.sent = 0;
+    this.dropTimes = [];
+  }
+  send(t, value, blocked) {
+    const s = this.spec; this.sent++;
+    if (blocked || (s.dropout > 0 && this.rng() < s.dropout)) {
+      this.drops++; this.dropTimes.push(t); return;
+    }
+    let lat = s.latency;
+    if (s.jitter > 0) lat += (this.rng() * 2 - 1) * s.jitter;
+    if (s.burstProb > 0 && this.rng() < s.burstProb) lat += s.burstExtra;
+    if (lat < 0) lat = 0;
+    this.q.push([t + lat, t, value]);
+  }
+  recv(t) {
+    if (this.q.length) {
+      const keep = [];
+      for (const it of this.q) {
+        if (it[0] <= t + 1e-12) {
+          if (this.last === null || it[1] >= this.last[0]) this.last = [it[1], it[2]];
+        } else keep.push(it);
+      }
+      this.q = keep;
+    }
+    if (this.last === null) return [null, 0];
+    const stale = t - this.last[0];
+    if (stale > this.maxStale) this.maxStale = stale;
+    return [this.last[1], stale];
+  }
+}
+
+// --- referans profili --------------------------------------------------------
+function refProfile(x, v0, xf) {
+  const aNom = v0 * v0 / (2.0 * Math.max(1.0, xf - 0.5 * (X_ENGAGE + X_RAMP)));
+  if (x < X_ENGAGE) return [v0, 0.0];
+  if (x < X_RAMP) {
+    const f = (x - X_ENGAGE) / (X_RAMP - X_ENGAGE);
+    const v2 = v0 * v0 - aNom * Math.pow(x - X_ENGAGE, 2) / (X_RAMP - X_ENGAGE);
+    return [Math.sqrt(Math.max(0, v2)), aNom * f];
+  }
+  const v2 = v0 * v0 - aNom * (X_RAMP - X_ENGAGE) - 2.0 * aNom * (x - X_RAMP);
+  return [Math.sqrt(Math.max(0, v2)), aNom];
+}
+
+// --- ana kosu ----------------------------------------------------------------
+function simulate(p, traceEvery = 20) {
+  const b = p.halfSpan;
+  const mEst = p.mass + p.weightEstError;
+  const cShock = p.shockScheduling
+    ? p.cShockRef * Math.pow(mEst / p.wRef, p.shockExp) : p.cShockRef;
+  const kShockEff = p.shockScheduling
+    ? p.kShock * Math.pow(mEst / p.wRef, p.shockKExp) : p.kShock;
+
+  const g = gainsOf(mEst, p.entrySpeed);
+  const wc = 2 * Math.PI * p.innerBandwidth;
+  const kpI = p.lPh * wc, kiI = p.rPh * wc;
+
+  // durum
+  const y = new Float64Array(NSTATE);
+  y[IV] = p.entrySpeed; y[IVB] = p.vNom;
+  let cEff = p.cBank;
+
+  // kontrolcu "blackboard"
+  const ctrl = {
+    vRef: p.entrySpeed, tMotCmd: 0, iCmd: 0, uVolt: 0,
+    motorEnabled: true, degraded: false, degradeT0: -1,
+    integO: 0, integI: 0, lastGoodTCmd: 0, watchdogEvents: 0,
+    kp: g.kp, ki: g.ki, runoutTarget: g.runout, bin: g.bin,
+  };
+
+  const deck = new DelayLink(p.linkDeck, rngFor(p.seed, 'link_deck'));
+  const torque = new DelayLink(p.linkTorque, rngFor(p.seed, 'link_torque'));
+
+  const meas = {
+    deck: (t) => { const [v, s] = deck.recv(t); return v === null ? [[y[IX], y[IV]], 0] : [v, s]; },
+    drumPayout: () => y[ISD],
+    omega: () => y[IW],
+    current: () => y[II],
+    vbus: () => y[IVB],
+    torqueCmd: (t) => { const [v, s] = torque.recv(t); return [v === null ? 0 : v, s]; },
+  };
+
+  function estimateFromEncoder(t) {
+    const sd = meas.drumPayout(), w = meas.omega();
+    const r = 0.5 * sd + b;
+    const x = Math.sqrt(Math.max(0, r * r - b * b));
+    const d = dpayout(x, b);
+    return [x, d > 0.05 ? w * p.drumRadius / d : 0];
+  }
+
+  // --- gorevler
+  function taskSupervisor(t) {
+    const [, stale] = meas.deck(t);
+    const out = {}, st = {};
+    const bn = binOf(mEst, p.entrySpeed);
+    const gg = gainsOf(mEst, p.entrySpeed);
+    out.bin = bn; out.kp = gg.kp; out.ki = gg.ki; out.runoutTarget = gg.runout;
+    if (stale > p.watchdogTimeout) {
+      out.degraded = true;
+      if (!ctrl.degraded && ctrl.degradeT0 < 0) {
+        st.watchdogEvents = ctrl.watchdogEvents + 1; st.degradeT0 = t;
+      }
+    } else { out.degraded = false; st.degradeT0 = -1; }
+    out.motorEnabled = !(p.pcsLossTime >= 0 && p.pcsLossTime <= t && p.pcsDisableMotor);
+    return [st, out];
+  }
+
+  function taskTrajectory(t) {
+    let x;
+    if (ctrl.degraded && p.fallbackEstimator) x = estimateFromEncoder(t)[0];
+    else x = meas.deck(t)[0][0];
+    return [{}, { vRef: refProfile(x, p.entrySpeed, ctrl.runoutTarget)[0] }];
+  }
+
+  function taskOuter(t) {
+    let x, v;
+    const dt = p.taskOuter.period;
+    if (ctrl.degraded && !p.fallbackEstimator) {
+      const held = ctrl.degradeT0 >= 0 ? t - ctrl.degradeT0 : 0;
+      const hold = p.watchdogHold;
+      const tc = held <= hold ? ctrl.lastGoodTCmd
+        : ctrl.lastGoodTCmd * Math.max(0, 1 - (held - hold) / hold);
+      return [{}, { tMotCmd: tc, iCmd: tc / p.kt }];
+    }
+    if (ctrl.degraded) { [x, v] = estimateFromEncoder(t); }
+    else { const d = meas.deck(t); x = d[0][0]; v = d[0][1]; }
+    const w = meas.omega();
+    if (x < X_ENGAGE) return [{ integO: 0, lastGoodTCmd: 0 }, { tMotCmd: 0, iCmd: 0 }];
+    const aRef = refProfile(x, p.entrySpeed, ctrl.runoutTarget)[1];
+    const fReq = mEst * aRef + p.thrust;
+    const dsdx = Math.max(DSDX_FLOOR, dpayout(x, b));
+    const tShaft = (fReq / dsdx) * p.drumRadius;
+    const kEst = p.kWt * (1 + p.kWtModelErr);
+    const tWtEst = kEst * w * Math.abs(w);
+    const e = v - ctrl.vRef;
+    const raw = tShaft - tWtEst + ctrl.kp * e + ctrl.ki * ctrl.integO;
+    const cmd = Math.max(-p.tMax, Math.min(p.tMax, raw));
+    let integ = ctrl.integO;
+    if (x >= X_RAMP && (Math.abs(raw - cmd) < 1e-9 || (raw - cmd) * e < 0)) {
+      integ = Math.max(-INTEG_CLAMP, Math.min(INTEG_CLAMP, ctrl.integO + e * dt));
+    }
+    return [{ integO: integ, lastGoodTCmd: cmd }, { tMotCmd: cmd, iCmd: cmd / p.kt }];
+  }
+
+  function taskInner(t) {
+    const dt = p.taskInner.period;
+    const i = meas.current(), w = meas.omega();
+    const emf = p.kt * w;
+    let icmd = meas.torqueCmd(t)[0];
+    icmd = Math.max(-p.iMax, Math.min(p.iMax, icmd));
+    const e = icmd - i;
+    const raw = kpI * e + kiI * ctrl.integI;
+    const vb = meas.vbus();
+    const u = Math.max(emf - vb, Math.min(emf, raw));
+    let integ = ctrl.integI;
+    if (Math.abs(raw - u) < 1e-9 || (raw - u) * e < 0) integ = ctrl.integI + e * dt;
+    return [{ integI: integ }, { uVolt: u }];
+  }
+
+  function applyOutput(out, t) {
+    for (const k in out) {
+      if (k === 'degradeT0') continue;
+      ctrl[k] = out[k];
+      if (k === 'iCmd') torque.send(t, out[k], false);
+    }
+  }
+  function applyState(st) {
+    for (const k in st) {
+      if (k === 'degradeT0') {
+        if (st[k] >= 0 && ctrl.degradeT0 < 0) ctrl.degradeT0 = st[k];
+        else if (st[k] < 0) ctrl.degradeT0 = -1;
+      } else ctrl[k] = st[k];
+    }
+  }
+
+  const mkTask = (spec, fn, name) => ({
+    spec, fn, rng: rngFor(p.seed, name), next: 0, pending: [], prevFinish: 0,
+    misses: 0, releases: 0, maxLat: 0, sumLat: 0, skipped: 0, name,
+  });
+  const tasks = [
+    mkTask(p.taskSupervisor, taskSupervisor, 'supervisor'),
+    mkTask(p.taskTrajectory, taskTrajectory, 'trajectory'),
+    mkTask(p.taskOuter, taskOuter, 'outer'),
+    mkTask(p.taskInner, taskInner, 'inner'),
+  ];
+  const skipOverrun = p.overrunPolicy === 'skip';
+  function execTime(tk) {
+    let e = tk.spec.exec;
+    if (tk.spec.jitter > 0) e += (tk.rng() * 2 - 1) * tk.spec.jitter;
+    if (tk.spec.overrunProb > 0 && tk.rng() < tk.spec.overrunProb) e *= tk.spec.overrunFactor;
+    return Math.max(0, e);
+  }
+  function schedStep(t) {
+    for (const tk of tasks) {
+      if (tk.pending.length) {
+        const still = [];
+        for (const it of tk.pending) {
+          if (it[0] <= t + 1e-12) applyOutput(it[1], it[0]); else still.push(it);
+        }
+        tk.pending = still;
+      }
+    }
+    for (const tk of tasks) {
+      while (t + 1e-12 >= tk.next) {
+        const rel = tk.next;
+        if (skipOverrun && tk.prevFinish > rel + 1e-12) {
+          tk.skipped++; tk.misses++; tk.next += tk.spec.period; continue;
+        }
+        const [st, out] = tk.fn(rel);
+        applyState(st);
+        const d = execTime(tk);
+        const start = rel > tk.prevFinish ? rel : tk.prevFinish;
+        const finish = start + d;
+        tk.prevFinish = finish;
+        const lat = finish - rel;
+        if (lat > tk.spec.period) tk.misses++;
+        tk.releases++; tk.sumLat += lat;
+        if (lat > tk.maxLat) tk.maxLat = lat;
+        tk.pending.push([finish, out]);
+        tk.next += tk.spec.period;
+      }
+    }
+  }
+
+  // --- plant turevleri
+  const k1 = new Float64Array(NSTATE), k2 = new Float64Array(NSTATE),
+        k3 = new Float64Array(NSTATE), k4 = new Float64Array(NSTATE),
+        ytmp = new Float64Array(NSTATE);
+  let lastHook = 0, lastTWt = 0, lastTMot = 0, lastTens = 0;
+
+  function deriv(yy, dy) {
+    const x = yy[IX], v = yy[IV], w = yy[IW], z = yy[IZ], i = yy[II];
+    const s = payout(x, b), sdot = dpayout(x, b) * v;
+    const d = s - yy[ISD] - z;
+    const rel = sdot - p.drumRadius * w;
+    const num = p.kCable * d + p.cCable * rel + (p.cCable * kShockEff / cShock) * z;
+    let tens = num / (1 + p.cCable / cShock);
+    if (tens < 0) tens = 0;
+    const zdot = (tens - kShockEff * z) / cShock;
+    const dsdx = dpayout(x, b);
+    const fHook = tens * dsdx;
+    const fRoll = v > 0 ? p.rollResist : 0;
+    dy[IX] = v;
+    dy[IV] = (p.thrust - fHook - fRoll) / p.mass;
+    dy[IZ] = zdot;
+    const emf = p.kt * w;
+    let vApp;
+    if (!ctrl.motorEnabled) { dy[II] = -i / 2.0e-3; vApp = 0; }
+    else {
+      vApp = Math.max(0, Math.min(yy[IVB], emf - ctrl.uVolt));
+      dy[II] = ((emf - vApp) - p.rPh * i) / p.lPh;
+    }
+    const ripple = p.rippleAmp !== 0 ? 1 + p.rippleAmp * Math.sin(p.rippleOrder * yy[ITH]) : 1;
+    const tMot = p.kt * i * ripple;
+    const tWt = p.kWt * w * Math.abs(w);
+    const tFric = p.drumFriction * w;
+    dy[ITH] = w;
+    dy[ISD] = p.drumRadius * w;
+    dy[IW] = (tens * p.drumRadius - tWt - tMot - tFric) / p.drumInertia;
+    const vb = Math.max(50, yy[IVB]);
+    const pIn = ctrl.motorEnabled ? vApp * i : 0;
+    const pChop = vb > p.vChop ? (vb - p.vChop) * vb / p.rChop : 0;
+    dy[IVB] = (pIn - pChop) / (cEff * vb);
+    dy[IEWT] = tWt * w;
+    dy[IEMOT] = ctrl.motorEnabled ? emf * i : 0;
+    dy[IECH] = pChop;
+    dy[IERL] = p.rPh * i * i;
+    dy[IEDMP] = p.cCable * Math.pow(rel - zdot, 2) + cShock * zdot * zdot;
+    dy[IETHR] = p.thrust * v;
+    dy[IEROLL] = fRoll * v;
+    dy[IEFR] = tFric * w;
+    lastHook = fHook; lastTWt = tWt; lastTMot = tMot; lastTens = tens;
+  }
+
+  function rk4(dt) {
+    deriv(y, k1);
+    for (let j = 0; j < NSTATE; j++) ytmp[j] = y[j] + 0.5 * dt * k1[j];
+    deriv(ytmp, k2);
+    for (let j = 0; j < NSTATE; j++) ytmp[j] = y[j] + 0.5 * dt * k2[j];
+    deriv(ytmp, k3);
+    for (let j = 0; j < NSTATE; j++) ytmp[j] = y[j] + dt * k3[j];
+    deriv(ytmp, k4);
+    const s6 = dt / 6;
+    for (let j = 0; j < NSTATE; j++) y[j] += s6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
+    if (y[II] > p.iMax) y[II] = p.iMax; else if (y[II] < -p.iMax) y[II] = -p.iMax;
+    if (y[IVB] < 50) y[IVB] = 50;
+    deriv(y, k1);
+  }
+
+  // --- ana dongu
+  const dt = p.baseDt, deckPeriod = 1 / p.deckRate;
+  let t = 0, nextDeck = 0, n = 0, pcsTripped = false;
+  let peakHook = 0, peakA = 0, sq = 0, nsq = 0, isq = 0, ierrMax = 0;
+  let vbusMax = p.vNom, vbusMin = p.vNom;
+  const tr = { t: [], x: [], v: [], vref: [], hook: [], w: [], twt: [], tmot: [], vbus: [], i: [], deg: [], g: [] };
+  const events = { watchdog: [], degraded: [], drops: [], pcs: [] };
+  let degStart = -1;
+
+  while (t < p.tMax_) {
+    if (y[IV] <= 0) break;
+    if (t + 1e-12 >= nextDeck) {
+      const outage = p.netOutageStart >= 0 && t >= p.netOutageStart &&
+                     t < p.netOutageStart + p.netOutageDur;
+      deck.send(t, [y[IX], y[IV]], outage);
+      nextDeck += deckPeriod;
+    }
+    if (!pcsTripped && p.pcsLossTime >= 0 && t >= p.pcsLossTime) {
+      cEff = p.pcsCAfter; pcsTripped = true; events.pcs.push(t);
+    }
+    const wasDeg = ctrl.degraded;
+    schedStep(t);
+    if (!wasDeg && ctrl.degraded) { degStart = t; events.watchdog.push(t); }
+    if (wasDeg && !ctrl.degraded && degStart >= 0) { events.degraded.push([degStart, t]); degStart = -1; }
+    rk4(dt);
+    t += dt; n++;
+
+    const hook = lastHook;
+    if (hook > peakHook) peakHook = hook;
+    const a = (hook + (y[IV] > 0 ? p.rollResist : 0) - p.thrust) / p.mass;
+    if (a > peakA) peakA = a;
+    if (y[IX] > X_ENGAGE) {
+      const e = y[IV] - ctrl.vRef; sq += e * e; nsq++;
+      const ie = ctrl.iCmd - y[II]; isq += ie * ie;
+      if (Math.abs(ie) > ierrMax) ierrMax = Math.abs(ie);
+    }
+    if (y[IVB] > vbusMax) vbusMax = y[IVB];
+    if (y[IVB] < vbusMin) vbusMin = y[IVB];
+
+    if (n % traceEvery === 0) {
+      tr.t.push(t); tr.x.push(y[IX]); tr.v.push(y[IV]); tr.vref.push(ctrl.vRef);
+      tr.hook.push(hook); tr.w.push(y[IW]); tr.twt.push(lastTWt); tr.tmot.push(lastTMot);
+      tr.vbus.push(y[IVB]); tr.i.push(y[II]); tr.deg.push(ctrl.degraded ? 1 : 0);
+      tr.g.push(a / 9.81);
+    }
+  }
+  if (degStart >= 0) events.degraded.push([degStart, t]);
+
+  // --- enerji
+  const ke0 = 0.5 * p.mass * p.entrySpeed * p.entrySpeed;
+  const ke = 0.5 * p.mass * y[IV] * y[IV];
+  const rot = 0.5 * p.drumInertia * y[IW] * y[IW];
+  const dEl = payout(y[IX], b) - y[ISD] - y[IZ];
+  const spring = 0.5 * p.kCable * Math.pow(Math.max(0, dEl), 2) + 0.5 * kShockEff * y[IZ] * y[IZ];
+  const diss = y[IEWT] + y[IEMOT] + y[IEDMP] + y[IEROLL] + y[IEFR];
+  const energy = {
+    ke0, ke, rot, spring,
+    eWt: y[IEWT], eMot: y[IEMOT], eChop: y[IECH], eRloss: y[IERL],
+    eDamp: y[IEDMP], eThrust: y[IETHR], eRoll: y[IEROLL], eFric: y[IEFR],
+    twisterShare: diss > 0 ? y[IEWT] / diss : 0,
+    motorShare: diss > 0 ? y[IEMOT] / diss : 0,
+    balanceErr: ((ke0 + y[IETHR]) - (ke + rot + spring + diss)) / Math.max(1, ke0),
+  };
+
+  const taskReport = {};
+  let misses = 0;
+  for (const tk of tasks) {
+    misses += tk.misses;
+    taskReport[tk.name] = {
+      releases: tk.releases, misses: tk.misses, skipped: tk.skipped,
+      maxLatUs: tk.maxLat * 1e6,
+      meanLatUs: tk.releases ? tk.sumLat / tk.releases * 1e6 : 0,
+    };
+  }
+
+  const metrics = {
+    stopped: y[IV] <= 0, runout: y[IX], tStop: t,
+    peakHook, peakG: peakA / 9.81,
+    trackRms: nsq ? Math.sqrt(sq / nsq) : 0,
+    iRms: nsq ? Math.sqrt(isq / nsq) : 0, iErrMax: ierrMax,
+    vbusMax, vbusMin,
+    deckMaxStaleMs: deck.maxStale * 1e3, deckDrops: deck.drops, deckSent: deck.sent,
+    watchdogEvents: ctrl.watchdogEvents, bin: ctrl.bin, runoutTarget: ctrl.runoutTarget,
+    deadlineMisses: misses,
+  };
+  const checks = [
+    { key: 'runout', label: 'Runout', val: metrics.runout, lim: p.limRunout, unit: 'm', ok: metrics.runout <= p.limRunout && metrics.stopped },
+    { key: 'hook', label: 'Tepe kanca yükü', val: metrics.peakHook / 1e3, lim: p.limHook / 1e3, unit: 'kN', ok: metrics.peakHook <= p.limHook },
+    { key: 'g', label: 'Tepe yavaşlama', val: metrics.peakG, lim: p.limPeakG, unit: 'g', ok: metrics.peakG <= p.limPeakG },
+    { key: 'rms', label: 'Hız izleme RMS', val: metrics.trackRms, lim: p.limRms, unit: 'm/s', ok: metrics.trackRms <= p.limRms },
+    { key: 'vbus', label: 'DC bara tepe', val: metrics.vbusMax, lim: p.limVbus, unit: 'V', ok: metrics.vbusMax <= p.limVbus },
+  ];
+  metrics.pass = metrics.stopped && checks.every(c => c.ok);
+  return { metrics, energy, trace: tr, events, tasks: taskReport, checks, drops: deck.dropTimes };
+}
+
+{ defaults, binOf, gainsOf, payout, dpayout, X_ENGAGE, X_RAMP };
+
+return {defaults, simulate, binOf, gainsOf};
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x,d=1) => x.toFixed(d);
+
+// --- ayarlar -> parametre nesnesi -------------------------------------------
+const C = {
+  mass:{el:'mass', def:22000, fmt:v=>(v/1000).toFixed(1)+' t'},
+  v0:{el:'v0', def:65, fmt:v=>v+' m/s'},
+  werr:{el:'werr', def:0, fmt:v=>(v>0?'+':'')+v+' kg'},
+  lat:{el:'lat', def:1, fmt:v=>v+' ms'},
+  jit:{el:'jit', def:0.2, fmt:v=>'±'+v+' ms'},
+  drop:{el:'drop', def:0, fmt:v=>'%'+v},
+  outage:{el:'outage', def:0, fmt:v=>v?v+' ms':'yok'},
+  wd:{el:'wd', def:20, fmt:v=>v+' ms'},
+  iwcet:{el:'iwcet', def:25, fmt:v=>v+' µs'},
+  iper:{el:'iper', def:100, fmt:v=>v+' µs'},
+  oper:{el:'oper', def:1, fmt:v=>v+' ms'},
+  pcs:{el:'pcs', def:-1, fmt:v=>v<0?'yok':(v/10).toFixed(1)+' s'},
+  rip:{el:'rip', def:0, fmt:v=>'%'+v},
+};
+function readUI(){
+  const g = k => parseFloat($(C[k].el).value);
+  const p = AAG.defaults();
+  p.mass = g('mass'); p.entrySpeed = g('v0'); p.weightEstError = g('werr');
+  p.linkDeck = {latency:g('lat')*1e-3, jitter:g('jit')*1e-3, dropout:g('drop')/100, burstProb:0, burstExtra:0};
+  if (g('outage') > 0){ p.netOutageStart = 0.9; p.netOutageDur = g('outage')*1e-3; }
+  p.watchdogTimeout = g('wd')*1e-3;
+  p.fallbackEstimator = $('fb').value === '1';
+  p.overrunPolicy = $('pol').value;
+  p.taskInner = {...p.taskInner, exec:g('iwcet')*1e-6, jitter:0.2*g('iwcet')*1e-6, period:g('iper')*1e-6};
+  p.taskOuter = {...p.taskOuter, period:g('oper')*1e-3};
+  if (g('pcs') >= 0) p.pcsLossTime = g('pcs')/10;
+  p.rippleAmp = g('rip')/100;
+  return p;
+}
+function writeUI(o){
+  for (const k in C) if (o[k] !== undefined) $(C[k].el).value = o[k];
+  if (o.fb !== undefined) $('fb').value = o.fb;
+  if (o.pol !== undefined) $('pol').value = o.pol;
+  syncLabels();
+}
+function syncLabels(){
+  for (const k in C){ const el = $(k+'_v'); if (el) el.textContent = C[k].fmt(parseFloat($(C[k].el).value)); }
+}
+function resetAll(){
+  const o = {}; for (const k in C) o[k] = C[k].def;
+  o.fb = '0'; o.pol = 'skip'; writeUI(o);
+}
+
+// --- hazır durumlar ----------------------------------------------------------
+const PRESETS = [
+  ['Nominal', {}],
+  ['PCS kondansatör kaybı', {pcs:12}],
+  ['30 ms gecikme — tork rampası', {lat:30}],
+  ['30 ms gecikme — enkoder kestirimi', {lat:30, fb:'1'}],
+  ['Akım çevrimi 120 µs — kuyruk', {iwcet:120, pol:'queue'}],
+  ['Akım çevrimi 120 µs — atla', {iwcet:120, pol:'skip'}],
+  ['1 s ağ kopması — enkoder', {outage:1000, fb:'1'}],
+  ['Hafif uçak 12 t @ 68 m/s', {mass:12000, v0:68}],
+  ['Watchdog 160 ms, gecikme 120 ms', {lat:120, wd:160}],
+];
+let activePreset = 0;
+function applyPreset(i){
+  activePreset = i; resetAll(); writeUI(PRESETS[i][1]);
+  [...$('presets').children].forEach((b,k)=>b.setAttribute('aria-pressed', k===i));
+  run(true);
+}
+PRESETS.forEach(([name],i)=>{
+  const b = document.createElement('button');
+  b.className='preset'; b.textContent=name; b.setAttribute('aria-pressed', i===0);
+  b.onclick=()=>applyPreset(i); $('presets').appendChild(b);
+});
+
+// --- çizim yardımcıları ------------------------------------------------------
+function fit(cv){
+  const r = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 600;
+  // Mantiksal yukseklik bir kez saklanir: cv.height'a yazmak HTML ozniteligini
+  // degistirir, geri okunursa her cizimde olcek katlanir.
+  if (!cv.dataset.h) cv.dataset.h = cv.getAttribute('height');
+  const h = parseInt(cv.dataset.h, 10);
+  if (cv.width !== Math.round(w*r) || cv.height !== Math.round(h*r)){
+    cv.width = Math.round(w*r); cv.height = Math.round(h*r);
+  }
+  cv.style.height = h + 'px';
+  const g = cv.getContext('2d');
+  g.setTransform(r,0,0,r,0,0);
+  g.clearRect(0,0,w,h);
+  return {g, w, h};
+}
+function niceStep(v){
+  if (v <= 0) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v)));
+  const m = v/e;
+  const ladder = [1,1.5,2,2.5,3,4,5,7.5,10];
+  for (const c of ladder) if (m <= c + 1e-9) return c*e;
+  return 10*e;
+}
+// Eksen araligi: veriyi ve limitleri kapsayan, duzgun adimli bir izgara.
+function axisRange(lo, hi){
+  if (hi - lo < 1e-9) hi = lo + 1;
+  const step = niceStep((hi-lo)/4);
+  const a = Math.floor(lo/step)*step;
+  const n = Math.max(2, Math.ceil((hi-a)/step - 1e-9));
+  return {lo:a, step, n};
+}
+function chart(cv, opts){
+  const {g,w,h} = fit(cv);
+  const ml=46, mr=10, mt=8, mb=22;
+  const pw = w-ml-mr, ph = h-mt-mb;
+  const xs = opts.x, xmin = 0, xmax = Math.max(1, xs[xs.length-1]||1);
+  let dmax = -Infinity, dmin = Infinity;
+  for (const s of opts.series) for (const v of s.data){ if(v>dmax)dmax=v; if(v<dmin)dmin=v; }
+  if (!isFinite(dmax)){ dmax = 1; dmin = 0; }
+  if (opts.limit) dmax = Math.max(dmax, opts.limit);
+  if (opts.limit2) dmax = Math.max(dmax, opts.limit2);
+  let lo = dmin >= 0 ? (opts.ymin !== undefined ? Math.min(dmin, opts.ymin) : 0) : dmin;
+  const ax = axisRange(lo, dmax);
+  const ymin = ax.lo, ymax = ax.lo + ax.n*ax.step;
+  const X = v => ml + (v-xmin)/(xmax-xmin)*pw;
+  const Y = v => mt + ph - (v-ymin)/(ymax-ymin||1)*ph;
+  const dec = ax.step < 1 ? 1 : 0;
+  g.font = '10px '+css('--font-mono');
+  g.strokeStyle = css('--line'); g.fillStyle = css('--fg-faint'); g.lineWidth = 1;
+  for (let k=0;k<=ax.n;k++){
+    const yv = ymin + ax.step*k, y = Math.round(Y(yv))+.5;
+    g.globalAlpha = Math.abs(yv) < 1e-9 ? 1 : .45;
+    g.beginPath(); g.moveTo(ml,y); g.lineTo(w-mr,y); g.stroke(); g.globalAlpha=1;
+    g.textAlign='right'; g.textBaseline='middle';
+    g.fillText(opts.fmtY ? opts.fmtY(yv) : yv.toFixed(dec), ml-5, y);
+  }
+  g.textAlign='center'; g.textBaseline='top';
+  for (let k=0;k<4;k++){            // son tik etiketi eksen adina yer biraksin
+    const xv = xmin + (xmax-xmin)*k/4;
+    g.fillText(xv.toFixed(xmax>20?0:1), X(xv), h-mb+5);
+  }
+  g.textAlign='right'; g.fillStyle = css('--fg-faint');
+  g.fillText(opts.xLabel, w-mr, h-mb+5);
+  if (opts.limit){
+    g.strokeStyle = css('--bad'); g.setLineDash([4,3]); g.lineWidth=1;
+    g.beginPath(); const yl=Math.round(Y(opts.limit))+.5; g.moveTo(ml,yl); g.lineTo(w-mr,yl); g.stroke();
+    g.setLineDash([]);
+  }
+  if (opts.limit2){
+    g.strokeStyle = css('--warn'); g.setLineDash([4,3]); g.lineWidth=1;
+    g.beginPath(); const yl=Math.round(Y(opts.limit2))+.5; g.moveTo(ml,yl); g.lineTo(w-mr,yl); g.stroke();
+    g.setLineDash([]);
+  }
+  for (const s of opts.series){
+    g.strokeStyle = s.color; g.lineWidth = s.w || 1.8;
+    if (s.dash) g.setLineDash(s.dash);
+    g.beginPath();
+    for (let k=0;k<xs.length;k++){ const px=X(xs[k]), py=Y(s.data[k]); k?g.lineTo(px,py):g.moveTo(px,py); }
+    g.stroke(); g.setLineDash([]);
+  }
+  return {X,Y,ml,mr,mt,mb,pw,ph,w,h,g};
+}
+
+// --- güverte görünümü --------------------------------------------------------
+const B = 15.0;
+function drawDeck(res, idx){
+  const {g,w,h} = fit($('deck'));
+  const tr = res.trace;
+  const xmaxm = Math.max(115, Math.ceil((res.metrics.runout+12)/10)*10);
+  const ml=10, mr=10, mt=14, mb=20;
+  const pw=w-ml-mr, ph=h-mt-mb;
+  const X = m => ml + m/xmaxm*pw;
+  const cy = mt+ph/2;
+  const ys = 22;                           // 1 m dikey = ys/15 px
+  const Y = m => cy + m*(ph/2-10)/ys;
+  g.fillStyle = css('--deck');
+  g.fillRect(ml, Y(-ys)+0, pw, Y(ys)-Y(-ys));
+  g.strokeStyle = css('--deck-mark'); g.lineWidth=2; g.setLineDash([14,11]);
+  g.beginPath(); g.moveTo(ml,cy); g.lineTo(w-mr,cy); g.stroke(); g.setLineDash([]);
+  g.font='10px '+css('--font-mono'); g.textAlign='center'; g.textBaseline='top';
+  for (let m=0;m<=xmaxm;m+=10){
+    g.strokeStyle=css('--deck-mark'); g.globalAlpha=.55; g.lineWidth=1;
+    g.beginPath(); g.moveTo(Math.round(X(m))+.5, Y(-ys)); g.lineTo(Math.round(X(m))+.5, Y(-ys)+7); g.stroke();
+    g.globalAlpha=1; g.fillStyle=css('--fg-faint');
+    if (X(m) < w-mr-58) g.fillText(m, X(m), h-mb+4);
+  }
+  g.textAlign='right'; g.fillText('travel [m]', w-mr, h-mb+4);
+  // hedef ve limit
+  const mark = (m,color,label,above)=>{
+    g.strokeStyle=color; g.lineWidth=1.6; g.setLineDash([5,4]);
+    g.beginPath(); g.moveTo(X(m), Y(-ys)); g.lineTo(X(m), Y(ys)); g.stroke(); g.setLineDash([]);
+    g.fillStyle=color; g.textBaseline='top';
+    const near = X(m) > w-mr-90;
+    g.textAlign = near ? 'right' : 'left';
+    g.fillText(label, near ? X(m)-4 : X(m)+4, above? mt-2 : Y(ys)-13);
+  };
+  mark(res.metrics.runoutTarget, css('--accent'), 'hedef '+fmt(res.metrics.runoutTarget,0)+' m', true);
+  mark(103, css('--bad'), 'limit 103 m', false);
+  // halat ve uçak
+  const x = tr.x[idx], hook = tr.hook[idx];
+  const lw = 1 + Math.min(5, hook/260e3);
+  g.strokeStyle = css('--accent'); g.lineWidth = lw; g.lineCap='round';
+  g.beginPath(); g.moveTo(X(0), Y(-B)); g.lineTo(X(x), cy); g.lineTo(X(0), Y(B)); g.stroke();
+  g.fillStyle = css('--deck-mark');
+  g.beginPath(); g.arc(X(0), Y(-B), 4, 0, 7); g.fill();
+  g.beginPath(); g.arc(X(0), Y(B), 4, 0, 7); g.fill();
+  // uçak (plan)
+  const px = X(x);
+  g.save(); g.translate(px, cy);
+  g.fillStyle = css('--fg');
+  g.beginPath(); g.moveTo(13,0); g.lineTo(-7,5); g.lineTo(-9,0); g.lineTo(-7,-5); g.closePath(); g.fill();
+  g.fillRect(-4,-14,4,28);
+  g.fillRect(-9,-8,3,16);
+  g.restore();
+  // iz
+  g.strokeStyle = css('--fg-faint'); g.globalAlpha=.4; g.lineWidth=1;
+  g.beginPath(); g.moveTo(X(0), cy); g.lineTo(px, cy); g.stroke(); g.globalAlpha=1;
+}
+
+// --- gerçek zamanlı olay şeridi ----------------------------------------------
+function drawStrip(res){
+  const {g,w,h} = fit($('strip'));
+  const tr = res.trace, tmax = Math.max(0.1, tr.t[tr.t.length-1]);
+  const ml=46, mr=10, mt=6, mb=20;
+  const pw=w-ml-mr;
+  const X = t => ml + t/tmax*pw;
+  const rows = [['bozulmuş mod',0],['watchdog',1],['paket kaybı',2],['PCS',3]];
+  const rh = (h-mt-mb)/rows.length;
+  g.font='10px '+css('--font-mono'); g.textBaseline='middle';
+  rows.forEach(([lab,i])=>{
+    const y = mt + i*rh;
+    g.fillStyle = css('--surface-2'); g.fillRect(ml, y+2, pw, rh-4);
+    g.fillStyle = css('--fg-faint'); g.textAlign='right';
+    g.fillText(lab, ml-5, y+rh/2);
+  });
+  for (const [a,b] of res.events.degraded){
+    g.fillStyle = css('--bad');
+    g.fillRect(X(a), mt+2, Math.max(1.5, X(b)-X(a)), rh-4);
+  }
+  g.fillStyle = css('--accent');
+  for (const t of res.events.watchdog) g.fillRect(X(t)-1, mt+rh+2, 2.5, rh-4);
+  g.fillStyle = css('--fg-faint'); g.globalAlpha=.75;
+  const dr = res.drops, stepd = Math.max(1, Math.floor(dr.length/900));
+  for (let k=0;k<dr.length;k+=stepd) g.fillRect(X(dr[k]), mt+2*rh+2, 1.2, rh-4);
+  g.globalAlpha=1;
+  g.fillStyle = css('--motor');
+  for (const t of res.events.pcs) g.fillRect(X(t)-1, mt+3*rh+2, 2.5, rh-4);
+  g.strokeStyle = css('--line'); g.fillStyle = css('--fg-faint');
+  g.textAlign='center'; g.textBaseline='top';
+  for (let k=0;k<=4;k++){ const tv = tmax*k/4; g.fillText(tv.toFixed(1), X(tv), h-mb+4); }
+  g.textAlign='right'; g.fillText('t [s]', w-mr, h-mb+4);
+}
+
+// --- sonuç paneli ------------------------------------------------------------
+function paint(res){
+  const m = res.metrics;
+  $('verdict').textContent = m.pass ? 'GEÇTİ' : 'KALDI';
+  $('verdict').className = 'vbadge ' + (m.pass ? 'pass' : 'fail');
+  $('checks').innerHTML = res.checks.map(c => {
+    const d = c.unit==='V' ? 0 : (c.unit==='kN' ? 0 : 2);
+    return '<div class="check '+(c.ok?'ok':'no')+'"><div class="cl">'+c.label+'</div>'+
+      '<div class="cv">'+c.val.toFixed(d)+' '+c.unit+' <span class="lim">/ '+c.lim.toFixed(d)+'</span></div></div>';
+  }).join('');
+  $('stopnote').innerHTML = m.stopped
+    ? 'Uçak <b>'+fmt(m.runout)+' m</b>’de durdu (t = '+fmt(m.tStop,2)+' s). Kazanç bin’i ('+m.bin[0]+', '+m.bin[1]+'), hedef runout '+fmt(m.runoutTarget,0)+' m.'
+    : '<b>Uçak 6 saniyelik pencerede hiç durmadı.</b> Gösterilen runout kesilmiş bir değerdir — gerçekte daha büyük. Bu sonuç, arrest boyunca itkinin tam gazda kaldığı varsayımına bağlı.';
+
+  const tk = res.tasks;
+  $('rtnote').innerHTML = 'Deadline kaçırma: <b>'+m.deadlineMisses.toLocaleString('tr')+
+    '</b> (akım çevrimi '+tk.inner.misses.toLocaleString('tr')+', atlanan '+tk.inner.skipped.toLocaleString('tr')+
+    ') · watchdog olayı <b>'+m.watchdogEvents+'</b> · güverte verisi en bayat <b>'+fmt(m.deckMaxStaleMs,1)+
+    ' ms</b> · kayıp paket '+m.deckDrops+'/'+m.deckSent+' · akım izleme RMS <b>'+fmt(m.iRms,0)+' A</b>.';
+
+  const tr = res.trace;
+  chart($('c_v'), {x:tr.x, xLabel:'travel [m]', series:[
+    {data:tr.vref, color:css('--fg-faint'), w:1.4, dash:[5,4]},
+    {data:tr.v, color:css('--accent')}]});
+  chart($('c_h'), {x:tr.x, xLabel:'travel [m]', limit:1100, series:[
+    {data:tr.hook.map(v=>v/1e3), color:css('--accent')}]});
+  chart($('c_t'), {x:tr.x, xLabel:'travel [m]', series:[
+    {data:tr.twt.map(v=>v/1e3), color:css('--twister')},
+    {data:tr.tmot.map(v=>v/1e3), color:css('--motor')}]});
+  chart($('c_b'), {x:tr.t, xLabel:'t [s]', limit:7500, limit2:7000, series:[
+    {data:tr.vbus, color:css('--bus')}]});
+  drawStrip(res);
+
+  const e = res.energy, tot = e.eWt + e.eMot + e.eDamp + e.eRoll + e.eFric;
+  const parts = [
+    ['su türbini', e.eWt, css('--twister')],
+    ['motor', e.eMot, css('--motor')],
+    ['halat/sürtünme', e.eDamp + e.eRoll + e.eFric, css('--fg-faint')],
+  ];
+  $('ebar').innerHTML = parts.map(([n,v,c])=>{
+    const pc = 100*v/tot;
+    return '<span style="background:'+c+';width:'+Math.max(0,pc).toFixed(2)+'%">'+(pc>11?('%'+pc.toFixed(1)):'')+'</span>';
+  }).join('');
+  $('enote').innerHTML = 'Giriş kinetik enerjisi <b>'+fmt(e.ke0/1e6,1)+' MJ</b> (+ itki işi '+fmt(e.eThrust/1e6,1)+
+    ' MJ). Su türbini payı <b>%'+fmt(100*e.twisterShare,1)+'</b> — kaynaktaki tek sayısal hedef ≈%70. '+
+    'Motorun ürettiği enerjinin '+fmt(e.eChop/1e6,1)+' MJ’ü fren çoperinde yakıldı. '+
+    'Enerji denge hatası %'+ (100*e.balanceErr).toFixed(4) + '.';
+}
+
+// --- oynatma -----------------------------------------------------------------
+let RES = null, idx = 0, playing = false, lastWall = 0;
+const SPEEDS = [0.1, 0.25, 0.5, 1];
+let spdI = 1;
+function telemetry(){
+  const tr = RES.trace, m = RES.metrics;
+  const rows = [
+    ['t', fmt(tr.t[idx],2)+' s'],
+    ['travel', fmt(tr.x[idx],1)+' m'],
+    ['hız', fmt(tr.v[idx],1)+' m/s'],
+    ['v_ref', fmt(tr.vref[idx],1)+' m/s'],
+    ['yavaşlama', fmt(tr.g[idx],2)+' g'],
+    ['kanca yükü', fmt(tr.hook[idx]/1e3,0)+' kN'],
+    ['tambur ω', fmt(tr.w[idx],0)+' rad/s'],
+    ['T türbin', fmt(tr.twt[idx]/1e3,0)+' kN·m'],
+    ['T motor', fmt(tr.tmot[idx]/1e3,0)+' kN·m'],
+    ['DC bara', fmt(tr.vbus[idx],0)+' V'],
+    ['mod', tr.deg[idx] ? 'BOZULMUŞ' : 'normal'],
+  ];
+  $('tele').innerHTML = rows.map(([k,v])=>
+    '<div><div class="k">'+k+'</div><div class="v"'+(k==='mod'&&tr.deg[idx]?' style="color:var(--bad)"':'')+'>'+v+'</div></div>').join('');
+}
+function seek(i){
+  idx = Math.max(0, Math.min(RES.trace.t.length-1, i));
+  $('scrub').value = Math.round(idx/(RES.trace.t.length-1)*1000);
+  drawDeck(RES, idx); telemetry();
+}
+function tick(now){
+  if (!playing) return;
+  const dtw = Math.min(0.1, (now-lastWall)/1000); lastWall = now;
+  const tr = RES.trace;
+  const tNow = tr.t[idx] + dtw*SPEEDS[spdI];
+  let i = idx;
+  while (i < tr.t.length-1 && tr.t[i] < tNow) i++;
+  seek(i);
+  if (i >= tr.t.length-1){ playing = false; $('play').textContent = '↻ Baştan'; return; }
+  requestAnimationFrame(tick);
+}
+$('play').onclick = ()=>{
+  if (playing){ playing=false; $('play').textContent='▶ Oynat'; return; }
+  if (idx >= RES.trace.t.length-1) seek(0);
+  playing = true; $('play').textContent='❚❚ Durdur';
+  lastWall = performance.now(); requestAnimationFrame(tick);
+};
+$('spd').onclick = ()=>{ spdI = (spdI+1)%SPEEDS.length; $('spd').textContent = SPEEDS[spdI]+'×'; };
+$('scrub').oninput = e => {
+  playing=false; $('play').textContent='▶ Oynat';
+  seek(Math.round(e.target.value/1000*(RES.trace.t.length-1)));
+};
+
+// --- koşu --------------------------------------------------------------------
+let pending = false;
+function run(autoplay){
+  const t0 = performance.now();
+  RES = AAG.simulate(readUI(), 20);
+  const ms = performance.now()-t0;
+  $('runtime').textContent = RES.trace.t.length + ' nokta · ' + ms.toFixed(0) + ' ms';
+  paint(RES); seek(0);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (autoplay && !reduce){ playing = true; $('play').textContent='❚❚ Durdur'; lastWall=performance.now(); requestAnimationFrame(tick); }
+}
+function schedule(){
+  syncLabels();
+  if (pending) return; pending = true;
+  requestAnimationFrame(()=>{ pending=false; playing=false; $('play').textContent='▶ Oynat'; run(false);
+    [...$('presets').children].forEach(b=>b.setAttribute('aria-pressed','false')); });
+}
+for (const k in C) $(C[k].el).addEventListener('input', schedule);
+$('fb').addEventListener('change', schedule);
+$('pol').addEventListener('change', schedule);
+let rT; window.addEventListener('resize', ()=>{ clearTimeout(rT); rT=setTimeout(()=>{ if(RES){paint(RES); drawDeck(RES, idx);} }, 120); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(RES){paint(RES); drawDeck(RES, idx);} });
+
+resetAll();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ if(RES){paint(RES); drawDeck(RES, idx);} });
+run(true);
+})();
+</script>

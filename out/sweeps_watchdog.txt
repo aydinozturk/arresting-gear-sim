@@ -1,0 +1,23 @@
+================================================================================
+  A. WATCHDOG ESIGI x AG GECIKMESI
+     hucre: runout [m] veya DURMADI (6 s icinde hic durmadi), * = KALDI
+================================================================================
+  wd / lat        0        5       10       20       30       50       80      120   [ms]
+         5      98      98* DURMADI* DURMADI* DURMADI* DURMADI* DURMADI* DURMADI*
+        10      98      98      98* DURMADI* DURMADI* DURMADI* DURMADI* DURMADI*
+        20      98      98      98      98* DURMADI* DURMADI* DURMADI* DURMADI*
+        40      98      98      98      98      98 DURMADI* DURMADI* DURMADI*
+        80      98      98      98      98      98      98      98* DURMADI*
+       160      98      98      98      98      98      98      98      98
+      1000      98      98      98      98      98      98      98      98
+  Not: hucreler tek tohum, jitter +-0.2 ms, nominal diger parametreler.
+  Okuma: watchdog esigi en kotu gecikmenin ALTINDA kalirsa, saglam veri
+         geldigi halde sistem kalici bozulmus moda duser. Varsayilan
+         bozulmus mod (tork rampasi) ile ucak HIC DURMUYOR; enkoder
+         kestirimi (rt.fallback_estimator) ile duruyor (bkz. WI-3).
+
+================================================================================
+  B. ILERI BESLEME MODEL HATASI (su turbini katsayisi kestirimi)
+================================================================================
+   k_wt hatasi   runout  tepe g  hook kN     RMS  sonuc
+          -80%     98.0    3.69      891    4.57  KALDI
