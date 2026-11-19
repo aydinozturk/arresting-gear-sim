@@ -1,213 +1,218 @@
-# Arresting Gear Sim
+# Uçak Gemisi Yakalama Sistemi Simülasyonu
 
-*English · [Türkçe](README.tr.md)*
+*Türkçe · [English](README.en.md)*
 
-A closed-loop simulation of a carrier aircraft **arresting gear**, written to answer a
-software question rather than a physics one: **which real-time properties actually matter,
-and which ones don't?**
+Bir uçak gemisi **yakalama sisteminin** (arresting gear) kapalı çevrim simülasyonu.
+Amaç bir fizik sorusunu değil, bir yazılım sorusunu yanıtlamak:
+**gerçek zamanlı davranışın hangi özellikleri gerçekten önemli, hangileri değil?**
 
-The control loop does not run as a continuous-time idealisation. It runs the way real-time
-code runs — four periodic tasks at four different rates, each with its own execution time,
-jitter and overrun behaviour, reading sensors over a link with latency, jitter and packet
-loss. All of that is injectable and seeded, so every "non-deterministic" run reproduces
-exactly.
+Kontrol döngüsü sürekli zamanlı bir idealizasyon olarak çalışmıyor. Gerçek zamanlı kodun
+çalıştığı gibi çalışıyor: dört ayrı periyotta dört görev, her birinin kendi yürütme süresi,
+jitter'ı ve overrun davranışı var; sensör verisi gecikmeli, jitter'lı ve paket kaybına açık
+bir hat üzerinden geliyor. Bunların hepsi enjekte edilebilir ve tohumlu, yani her
+"deterministik olmayan" koşu birebir tekrar üretilebiliyor.
 
-Pure Python standard library. **No dependencies, no build step.**
+Saf Python standart kütüphanesi. **Bağımlılık yok, derleme adımı yok.**
 
-> **These are not real AAG numbers.** The model is built from publicly described
-> architecture, not from any system data. Every numeric parameter in
-> [`aag/params.py`](aag/params.py) is an assumption, marked as such. Read the results as
-> *relative sensitivities* of this architecture, never as validation of a real system.
+> **Bu sayılar gerçek AAG değerleri değildir.** Model, açık kaynaklarda tarif edilen
+> mimariden kuruldu; hiçbir sistem verisi kullanılmadı. [`aag/params.py`](aag/params.py)
+> içindeki her sayısal parametre bir varsayımdır ve öyle etiketlenmiştir. Sonuçları bu
+> mimarinin *göreli duyarlılıkları* olarak okuyun, gerçek bir sistemin doğrulaması olarak
+> değil.
 
----
-
-## Quick start
-
-```bash
-python3 run_arrest.py        # one arrest, text report + CSV trace
-```
-
-```bash
-python3 tests/selfcheck.py   # energy balance, step convergence, determinism
-```
-
-```bash
-python3 run_scenarios.py     # ten named fault scenarios side by side
-```
-
-```bash
-python3 sweeps/sweep_timing.py   # the full timing/network/power sweep suite (~15 min)
-```
-
-For the interactive bench, open [`ui/simulator.html`](ui/simulator.html) in a browser —
-single file, works offline, nothing to install.
+![Tezgâhın nominal arrest sırasındaki görünümü](docs/img/bench-nominal.jpg)
 
 ---
 
-## What it models
+## Hızlı başlangıç
 
-```
-aircraft (m, v) ── deck pendant geometry s(x)=2(√(x²+B²)−B) ── elastic cable
-   └─ weight-scheduled shock absorber ── drum (J)
-        ├─ water twister   T = k·ω|ω|        (≈70 % of the energy)
-        └─ induction motor                   (fine control, final stop)
-              └─ shared PCS: DC bus + capacitor bank + braking chopper
+```bash
+python3 run_arrest.py        # tek arrest, metin raporu + CSV iz kaydı
 ```
 
-Cable payout is nonlinear in travel, so the same hook force needs very different cable
-tension early and late in the run. The drum shaft carries both a hydrodynamic brake and a
-controlled machine, and both feed one shared power conditioning system.
+```bash
+python3 tests/selfcheck.py   # enerji dengesi, adım yakınsaması, determinizm
+```
 
-Control, as four discrete tasks:
+```bash
+python3 run_scenarios.py     # on adlandırılmış arıza senaryosu yan yana
+```
 
-| Task | Rate | Job |
+```bash
+python3 sweeps/sweep_timing.py   # bütün zamanlama/ağ/güç taramaları (~15 dk)
+```
+
+Etkileşimli tezgâh için [`ui/simulator.html`](ui/simulator.html) dosyasını tarayıcıda açın —
+tek dosya, çevrimdışı çalışır, kurulum gerektirmez.
+
+---
+
+## Ne modelleniyor
+
+```
+uçak (m, v) ── güverte pandant geometrisi s(x)=2(√(x²+B²)−B) ── elastik halat
+   └─ ağırlığa göre çizelgelenen şok sönümleyici ── tambur (J)
+        ├─ su türbini   T = k·ω|ω|        (enerjinin ≈%70'i)
+        └─ endüksiyon motoru              (ince kontrol, son durdurma)
+              └─ paylaşımlı PCS: DC bara + kondansatör bankası + fren çoperi
+```
+
+Halat bosaltımı travel'a göre doğrusal değil; bu yüzden aynı kanca kuvveti koşunun başında
+ve sonunda çok farklı halat gerilimi gerektiriyor. Tambur mili hem hidrodinamik bir freni
+hem kontrollü bir makineyi taşıyor ve ikisi tek bir paylaşımlı güç koşullandırma sistemini
+besliyor.
+
+Kontrol, dört ayrık görev olarak:
+
+| Görev | Periyot | İşi |
 |---|---|---|
-| `supervisor` | 100 Hz | weight × speed gain bin, watchdog, degraded mode |
-| `trajectory` | 500 Hz | velocity reference `v_ref(x)` |
-| `outer` | 1 kHz | shaft torque command (feedforward + PI) |
-| `inner` | 10 kHz | motor current control (PI) |
+| `supervisor` | 100 Hz | ağırlık × hız kazanç bin'i, watchdog, bozulmuş mod |
+| `trajectory` | 500 Hz | hız referansı `v_ref(x)` |
+| `outer` | 1 kHz | mil tork komutu (ileri besleme + PI) |
+| `inner` | 10 kHz | motor akım kontrolü (PI) |
 
-Each task reads its inputs at release and applies its output at
-`release + execution_time`. Jobs of one task run **in sequence**, and what happens when a
-job overruns its period is an explicit policy (`skip` or `queue`) — which turns out to
-matter more than the execution time itself.
+Her görev girişini serbest bırakma anında okuyor, çıkışını
+`serbest bırakma + yürütme süresi` anında uyguluyor. Bir görevin işleri **sırayla** koşuyor
+ve bir iş periyodunu aştığında ne olacağı açık bir politika (`skip` veya `queue`) — ki bu,
+yürütme süresinin kendisinden daha belirleyici çıkıyor.
 
-### Nominal operating point
+### Nominal çalışma noktası
 
-22 t at 65 m/s: runout **97.7 m**, peak hook load **804 kN**, peak deceleration **3.29 g**,
-velocity tracking RMS **2.19 m/s**, water twister share **70.2 %**, energy balance closes
-to **0.000 %**, and halving the integration step moves every metric by less than 0.01 %.
+22 t, 65 m/s: runout **97.7 m**, tepe kanca yükü **804 kN**, tepe yavaşlama **3.29 g**,
+hız izleme RMS **2.19 m/s**, su türbini payı **%70.2**, enerji dengesi **%0.000** içinde
+kapanıyor ve entegrasyon adımı yarıya indiğinde hiçbir metrik %0.01'den fazla değişmiyor.
 
 ---
 
-## What the sweeps found
+## Taramalardan çıkanlar
 
-Eighteen sweeps, each perturbing one path and finding where the acceptance criteria break.
-Full write-up (Turkish): [`docs/rt-work-items.md`](docs/rt-work-items.md).
+On sekiz tarama, her biri tek bir yolu bozup kabul ölçütlerinin nerede kırıldığını buluyor.
+Tam metin: [`docs/rt-work-items.md`](docs/rt-work-items.md).
 
-### 1. The overrun policy matters more than the WCET
+### 1. Overrun politikası, WCET'ten daha belirleyici
 
-Current loop, 100 µs period, execution time swept:
+Akım çevrimi, periyot 100 µs sabit, yürütme süresi taranıyor:
 
-| WCET | `queue` | `skip` |
+| WCET | `queue` (kuyruk) | `skip` (atla) |
 |---|---|---|
-| 95 µs | 97.7 m · 3.29 g (14 641 missed deadlines) | 97.7 m · 3.29 g |
-| **120 µs** | **never stops · 8.42 g · 1910 kN** | 97.7 m · 3.29 g |
+| 95 µs | 97.7 m · 3.29 g (14 641 kaçırılan deadline) | 97.7 m · 3.29 g |
+| **120 µs** | **hiç durmuyor · 8.42 g · 1910 kN** | 97.7 m · 3.29 g |
 | 400 µs | 137 m · 5.97 g | 97.7 m · 3.30 g |
 
-With an unbounded job queue, the moment execution time exceeds the period the input-output
-delay grows by 20 µs per job and the arrest reaches mechanical damage levels. With
-skip-if-busy, a 4× overrun is indistinguishable from nominal.
+Sınırsız bir iş kuyruğunda, yürütme süresi periyodu aştığı anda giriş-çıkış gecikmesi her
+işte 20 µs büyüyor ve arrest mekanik hasar seviyesine çıkıyor. "Meşgulse atla" politikasında
+4 katlık bir aşım bile nominalden ayırt edilemiyor.
 
-So the requirement is not "make the WCET small". It is **"define the overrun policy"**, and
-write the acceptance criterion as `WCET < period`, not as "zero missed deadlines" — at 95 µs
-the loop misses 14 641 deadlines and nothing happens.
+Yani gereksinim "WCET'i küçült" değil, **"overrun politikasını tanımla"**. Kabul kriteri de
+"sıfır deadline kaçırma" değil `WCET < periyot` olarak yazılmalı — 95 µs'de çevrim 14 641
+deadline kaçırıyor ve hiçbir şey olmuyor.
 
-### 2. Loop latency is harmless; the fallback is not
+### 2. Döngü gecikmesi zararsız; bozulmuş mod değil
 
-Watchdog threshold × network latency, cell = runout:
+Watchdog eşiği × ağ gecikmesi, hücre = runout:
 
 ```
   wd / lat        0        5       10       20       30       50       80      120   [ms]
-         5      98      98*  NOSTOP*  NOSTOP*  NOSTOP*  NOSTOP*  NOSTOP*  NOSTOP*
-        20      98      98      98      98*  NOSTOP*  NOSTOP*  NOSTOP*  NOSTOP*
-        80      98      98      98      98      98      98      98*  NOSTOP*
+         5      98      98* DURMADI* DURMADI* DURMADI* DURMADI* DURMADI* DURMADI*
+        20      98      98      98      98* DURMADI* DURMADI* DURMADI* DURMADI*
+        80      98      98      98      98      98      98      98* DURMADI*
        160      98      98      98      98      98      98      98      98
 ```
 
-*(runout in metres; `NOSTOP` = the aircraft never stopped inside the 6 s window, so the
-figure would be censored; `*` = an acceptance criterion was violated. Four of the seven
-watchdog rows shown.)*
+*(runout metre cinsinden; `DURMADI` = uçak 6 s'lik pencerede hiç durmadı, yani değer
+kesilmiş olurdu; `*` = bir kabul ölçütü ihlal edildi. Yedi watchdog satırından dördü.)*
 
-The failure boundary is exactly the diagonal `latency ≥ watchdog threshold`. With the
-watchdog at 160 ms, even 120 ms of pure latency changes nothing — the outer loop is
-feedforward-dominated and the water twister provides strong passive feedback.
+İhlal sınırı tam olarak `gecikme ≥ watchdog eşiği` köşegeni. Watchdog 160 ms'e çekildiğinde
+120 ms saf gecikme bile hiçbir şeyi değiştirmiyor — dış çevrim ileri besleme ağırlıklı ve su
+türbini güçlü bir pasif geri besleme sağlıyor.
 
-The real problem is what happens *after* the trip. The default degraded mode ramps motor
-torque to zero, leaving only the twister — and `T ∝ ω²` cannot overcome steady thrust at low
-speed, so **the aircraft never stops**. Estimating position and velocity from the local drum
-encoder instead (inverting the payout geometry) keeps the loop closed with no dependency on
-the deck network at all:
+Asıl sorun tripten *sonra* olan. Varsayılan bozulmuş mod motor torkunu sıfıra rampalıyor,
+geriye yalnızca türbin kalıyor ve `T ∝ ω²` düşük hızda sabit itkiyi yenemediği için
+**uçak hiç durmuyor**:
 
-| Full network outage | torque ramp | encoder estimate |
+![30 ms gecikmede bozulmuş mod: uçak durmuyor](docs/img/bench-degraded.jpg)
+
+Bunun yerine konum ve hızı yerel tambur enkoderinden kestirmek (bosaltım geometrisini
+tersine çevirerek) çevrimi kapalı tutuyor ve güverte ağına hiç bağlı kalmıyor:
+
+| Tam ağ kopması | tork rampası | enkoder kestirimi |
 |---|---|---|
-| 400 ms | RMS 3.08 — fail | 97.7 m · RMS 2.29 — **pass** |
-| 1000 ms | 107.8 m · 4.60 g — fail | 98.4 m · 3.43 g — **pass** |
-| 1500 ms | 119.7 m — fail | 98.9 m · RMS 2.78 — **pass** |
+| 400 ms | RMS 3.08 — kaldı | 97.7 m · RMS 2.29 — **geçti** |
+| 1000 ms | 107.8 m · 4.60 g — kaldı | 98.4 m · 3.43 g — **geçti** |
+| 1500 ms | 119.7 m — kaldı | 98.9 m · RMS 2.78 — **geçti** |
 
-A 1.5-second total blackout violates nothing once the safety path stops depending on the
-network.
+Emniyet yolu ağa bağlı olmaktan çıktığında 1.5 saniyelik tam kesinti bile hiçbir ölçütü
+ihlal etmiyor.
 
-### 3. The shared power system is a single point of failure software cannot cover
+### 3. Paylaşımlı güç sistemi, yazılımın kapatamayacağı bir tek nokta arızası
 
-Losing the capacitor bank at *any* point in the run means the aircraft does not stop
-(409 m at 20 s and still rolling). It is the only scenario in the suite that fails
-unconditionally. Detection, logging and a pre-recovery readiness check are the software's
-job; the fix is architectural.
+Kondansatör bankasının koşunun *herhangi* bir anında kaybı uçağın durmaması demek
+(20 s'de 409 m ve hâlâ hareket hâlinde). Takımdaki koşulsuz başarısız olan tek senaryo bu.
+Tespit, kayıt ve iniş öncesi hazırlık kontrolü yazılımın işi; çözüm mimari.
 
-### Also measured
+### Ayrıca ölçülenler
 
-Jitter to ±20 ms, packet loss to 85 %, congestion bursts to 90 ms, outer-loop period to
-32 ms, torque ripple to 60 %, deck sampling down to 25 Hz — none of these breaks a single
-acceptance criterion on its own. They only do damage *through* the watchdog. The current
-loop's period limit scales with its bandwidth (`T·ω_c ≲ 1.5`), not as an absolute number.
+±20 ms jitter, %85 paket kaybı, 90 ms tıkanıklık patlamaları, 32 ms dış çevrim periyodu,
+%60 tork dalgalanması, 25 Hz'e kadar güverte örnekleme — hiçbiri tek başına tek bir kabul
+ölçütünü kırmıyor. Zararı yalnızca watchdog *üzerinden* veriyorlar. Akım çevriminin periyot
+sınırı mutlak bir sayı değil, bant genişliğiyle ölçekleniyor (`T·ω_c ≲ 1.5`).
 
-Weight estimation error is asymmetric: underestimating by 4000 kg fails, overestimating by
-10 000 kg does not.
-
----
-
-## Interactive bench
-
-[`ui/simulator.html`](ui/simulator.html) is a single self-contained HTML file: top-down deck
-view with the cable and the aircraft animated, live telemetry, acceptance criteria, a
-real-time event strip (degraded intervals, watchdog trips, dropped packets) and four charts.
-Every control re-runs the whole arrest in about 25 ms. Nine presets reproduce the findings
-above with one click.
-
-The browser engine ([`ui/engine.js`](ui/engine.js)) is a direct port of the Python model.
-`node ui/verify.mjs` runs nine configurations through it and the numbers match the Python
-model case for case.
+Ağırlık kestirim hatası asimetrik: 4000 kg düşük tahmin kabul ölçütünü kırıyor, 10 000 kg
+yüksek tahmin kırmıyor.
 
 ---
 
-## Self-checks
+## Etkileşimli tezgâh
 
-The sweep results are only worth reading if the model is sound, so `tests/selfcheck.py`
-gates them:
+[`ui/simulator.html`](ui/simulator.html) tek başına çalışan bir HTML dosyası: yukarıdan
+güverte görünümü (halat ve uçak canlandırılmış), canlı telemetri, kabul ölçütleri, gerçek
+zamanlı olay şeridi (bozulmuş mod aralıkları, watchdog tripleri, kaybolan paketler) ve dört
+grafik. Her ayar değişiminde arrest yaklaşık 25 ms'de yeniden hesaplanıyor. Dokuz hazır
+durum, yukarıdaki bulguları tek tıkla gösteriyor.
 
-- energy balance closes within 1 % (currently 0.000 %)
-- halving the base step changes every metric by less than 1 %
-- the same seed gives the same result — **in separate processes**, which caught a real bug:
-  `hash()` on strings is salted per process, so the "deterministic" runs were not reproducible
-- the fast integration mode agrees with the detailed one within 3 %
-- the water twister takes 65–75 % of the energy, the one numeric target available
+Tarayıcı motoru ([`ui/engine.js`](ui/engine.js)) Python modelinin birebir portu.
+`node ui/verify.mjs` dokuz yapılandırmayı bu motordan geçiriyor ve sayılar Python modeliyle
+durum durum eşleşiyor.
 
 ---
 
-## Repository map
+## Öz-kontroller
 
-| Path | Contents |
+Tarama sonuçları ancak model sağlamsa okunmaya değer, bu yüzden `tests/selfcheck.py` onları
+kapıda tutuyor:
+
+- enerji dengesi %1 içinde kapanıyor (şu an %0.000)
+- taban adım yarıya indiğinde her metrik %1'den az değişiyor
+- aynı tohum aynı sonucu veriyor — **ayrı süreçlerde de**, ki bu gerçek bir hata yakaladı:
+  Python'da string `hash()`'i süreçten sürece değiştiği için "deterministik" koşular aslında
+  tekrar üretilemiyordu
+- hızlı entegrasyon modu ayrıntılı modla %3 içinde uyuşuyor
+- su türbini enerjinin %65–75'ini alıyor, elimizdeki tek sayısal hedef
+
+---
+
+## Depo haritası
+
+| Yol | İçerik |
 |---|---|
-| [`aag/params.py`](aag/params.py) | every parameter, each marked as an assumption |
-| [`aag/plant.py`](aag/plant.py) | physics: aircraft, cable geometry, shock absorber, drum, twister, motor, PCS |
-| [`aag/control.py`](aag/control.py) | the four discrete control tasks, gain bins, degraded mode |
-| [`aag/rt.py`](aag/rt.py) | real-time scheduler and network layer — latency, jitter, overrun, packet loss |
-| [`aag/sim.py`](aag/sim.py) | orchestration, metrics, energy accounting |
-| [`sweeps/`](sweeps) | the sweep suites |
-| [`ui/`](ui) | browser engine, interface template, build script |
-| [`docs/design.md`](docs/design.md) | design document (Turkish) |
-| [`docs/rt-work-items.md`](docs/rt-work-items.md) | **the actual output**: 14 real-time software work items, each tied to a measurement (Turkish) |
-| [`out/`](out) | generated results — every table in the docs comes from these files |
+| [`aag/params.py`](aag/params.py) | bütün parametreler, her biri varsayım olarak işaretli |
+| [`aag/plant.py`](aag/plant.py) | fizik: uçak, halat geometrisi, şok sönümleyici, tambur, türbin, motor, PCS |
+| [`aag/control.py`](aag/control.py) | dört ayrık kontrol görevi, kazanç bin'leri, bozulmuş mod |
+| [`aag/rt.py`](aag/rt.py) | gerçek zamanlı zamanlayıcı ve ağ katmanı — gecikme, jitter, overrun, paket kaybı |
+| [`aag/sim.py`](aag/sim.py) | orkestrasyon, metrikler, enerji muhasebesi |
+| [`sweeps/`](sweeps) | tarama takımları |
+| [`ui/`](ui) | tarayıcı motoru, arayüz şablonu, paketleme betiği |
+| [`docs/design.md`](docs/design.md) | tasarım dokümanı |
+| [`docs/rt-work-items.md`](docs/rt-work-items.md) | **asıl çıktı**: her biri bir ölçüme bağlı 14 gerçek zamanlı yazılım iş maddesi |
+| [`out/`](out) | üretilen sonuçlar — dökümandaki her tablo bu dosyalardan geliyor |
 
-## What the simulation cannot answer
+## Simülasyonun cevaplayamadıkları
 
-WCET is an *input* here, not a measurement. CPU contention between tasks is not modelled, so
-priority assignment and response-time analysis belong on the target hardware. The RTOS,
-processor and bus are not modelled either — the published material this is based on does not
-name them. And the "never stops" results depend on the assumption that thrust stays at full
-power throughout the arrest.
+WCET burada bir ölçüm değil, *girdi*. Görevler arası CPU çekişmesi modellenmedi; öncelik
+ataması ve response-time analizi hedef donanımda yapılmalı. RTOS, işlemci ve veri yolu da
+modellenmedi — dayanılan açık kaynaklar bunları zaten belirtmiyor. "Uçak durmuyor"
+sonuçları ise itkinin arrest boyunca tam gazda kaldığı varsayımına bağlı.
 
-## License
+## Lisans
 
-MIT — see [LICENSE](LICENSE).
+MIT — bkz. [LICENSE](LICENSE).
